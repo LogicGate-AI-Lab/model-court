@@ -4,6 +4,8 @@
 
 ## Project Overview (V0.0.2)
 
+![alt text](logo.png)
+
 Model Court is an open-source framework designed to make cross-verification and fact-checking with multiple models easier. **Model Court is inspired by concepts from the U.S. courtroom system, using the roles of Prosecutor, Jury, and Judge to verify facts, with support for internet search, RAG-based retrieval, and more.**  
 The current version is **0.0.2**, released on **2025-11-30**, and provides the basic core functionality.
 
