@@ -163,16 +163,31 @@ SELECT * FROM court_code LIMIT 5;
 
 ---
 
-## RAG 知识库
+## 参考资料文档
 
-`data/rag_documents/` 包含两个示例文档：
+`data/rag_documents/` 包含示例参考文档：
 
-- `common_myths.txt` - 常见谣言知识
-- `scientific_facts.txt` - 科学事实知识
+- `common_myths.txt` - 常见谣言知识（用于RAG知识库）
+- `scientific_facts.txt` - 科学事实知识（用于RAG知识库）
+- `basic_facts.txt` - 基础事实知识（用于SimpleTextStorage文本存储）
+
+### 文档用途
+
+- **RAG知识库文档** (`common_myths.txt`, `scientific_facts.txt`)：
+  - 会被自动加载到向量数据库中
+  - 支持语义检索，查找相似内容
+  - 适合大量文档的场景
+
+- **文本存储文档** (`basic_facts.txt`)：
+  - 整个文件内容直接作为prompt提供给LLM
+  - 适合简单的事实列表或规则说明
+  - 成本低，适合小型知识库
 
 ### 添加自定义文档
 
-将 `.txt` 或 `.md` 文件放入 `data/rag_documents/`，重启服务器会自动加载。
+将 `.txt` 或 `.md` 文件放入 `data/rag_documents/`：
+- RAG文档：重启服务器会自动加载到向量数据库
+- 文本存储文档：可在代码中通过路径引用
 
 ---
 

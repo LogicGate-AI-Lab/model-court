@@ -168,18 +168,11 @@ judge = Judge(
 )
 
 # Jury 4: 文本存储 (Basic Facts)
-basic_facts_text = """
-常见事实知识：
-- 地球是圆的（球形）
-- 水的化学式是 H2O
-- 人类有 206 块骨骼（成年人）
-- 光速约为 299,792,458 米/秒
-- 地球绕太阳公转
-- 疫苗通过激发免疫系统工作
-- 酒精只能体外消毒，饮用无法杀死体内病毒
-- 埃隆·马斯克未收购可口可乐公司
-"""
+# 从文件读取基础事实知识
 from model_court.references import SimpleTextStorage
+basic_facts_file = Path(__file__).parent / "data" / "rag_documents" / "basic_facts.txt"
+with open(basic_facts_file, "r", encoding="utf-8") as f:
+    basic_facts_text = f.read()
 text_storage = SimpleTextStorage(text=basic_facts_text)
 
 jury_facts = Jury(

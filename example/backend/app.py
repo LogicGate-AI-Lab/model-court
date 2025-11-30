@@ -89,18 +89,17 @@ def initialize_court():
             rag_reference = None
         
         # 简单文本存储（基础事实）
-        basic_facts_text = """
-常见事实知识：
-- 地球是圆的（球形）
-- 水的化学式是 H2O
-- 人类有 206 块骨骼（成年人）
-- 光速约为 299,792,458 米/秒
-- 地球绕太阳公转
-- 疫苗通过激发免疫系统工作
-- 酒精只能体外消毒，饮用无法杀死体内病毒
-- 埃隆·马斯克未收购可口可乐公司
-        """
-        text_reference = SimpleTextStorage(text=basic_facts_text)
+        # 从文件读取基础事实知识
+        basic_facts_file = base_path.parent / "data" / "rag_documents" / "basic_facts.txt"
+        if basic_facts_file.exists():
+            with open(basic_facts_file, "r", encoding="utf-8") as f:
+                basic_facts_text = f.read()
+            text_reference = SimpleTextStorage(text=basic_facts_text)
+            print(f"✅ Loaded basic facts from: {basic_facts_file}")
+        else:
+            print(f"⚠️  Warning: basic_facts.txt not found at {basic_facts_file}")
+            text_reference = SimpleTextStorage(text="基础事实知识文件未找到。")
+
         
         # 4. 初始化 Juries
         print("Initializing Juries...")
