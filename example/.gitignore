@@ -1,0 +1,28 @@
+# Environment variables
+.env
+
+# Database files
+backend/*.db
+backend/*.db-journal
+
+# Vector stores
+data/rag_storage/
+data/vector_store/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+

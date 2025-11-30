@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Court - Fact Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .status-badge.ready {
+            background: #10b981;
+        }
+        
+        .status-badge.error {
+            background: #ef4444;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        .input-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #374151;
+            font-size: 1.1em;
+        }
+        
+        .input-section textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        .input-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: #4b5563;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result {
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .verdict-banner {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .verdict-banner.supported,
+        .verdict-banner.factual {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        
+        .verdict-banner.refuted,
+        .verdict-banner.false {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        
+        .verdict-banner.suspicious,
+        .verdict-banner.questionable {
+            background: #fef3c7;
+            color: #92400e;
+            border: 2px solid #f59e0b;
+        }
+        
+        .claim-item {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .claim-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .claim-verdict {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .claim-verdict.supported,
+        .claim-verdict.factual {
+            background: #10b981;
+            color: white;
+        }
+        
+        .claim-verdict.refuted,
+        .claim-verdict.false {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .claim-verdict.suspicious,
+        .claim-verdict.questionable {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .claim-text {
+            font-size: 1em;
+            color: #1f2937;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .claim-reasoning {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .jury-votes {
+            margin-top: 15px;
+        }
+        
+        .jury-votes h4 {
+            color: #374151;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+        
+        .jury-vote {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .jury-vote-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .jury-name {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .jury-decision {
+            font-size: 0.85em;
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+        
+        .jury-decision.no_objection {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .jury-decision.suspicious_fact,
+        .jury-decision.reasonable_doubt {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .jury-decision.abstain {
+            background: #e5e7eb;
+            color: #6b7280;
+            font-style: italic;
+        }
+        
+        .jury-reason {
+            color: #6b7280;
+            font-size: 0.85em;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        
+        .jury-reference {
+            background: #f3f4f6;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-size: 0.8em;
+            border-left: 3px solid #667eea;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .precedents-section {
+            background: #eff6ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 3px solid #3b82f6;
+        }
+        
+        .precedents-section h4 {
+            color: #1e40af;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .precedent-item {
+            background: white;
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+        }
+        
+        .precedent-similarity {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .info-box {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3b82f6;
+            font-size: 0.9em;
+            color: #1e40af;
+        }
+        
+        .examples {
+            margin-top: 15px;
+        }
+        
+        .example-btn {
+            background: #e0e7ff;
+            color: #4338ca;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+        
+        .example-btn:hover {
+            background: #c7d2fe;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚖️ Model Court</h1>
+            <p>AI-Powered Fact Checking System</p>
+            <div id="status" class="status-badge">Loading...</div>
+        </div>
+        
+        <div class="card">
+            <div class="input-section">
+                <label for="inputText">输入需要检查的文本内容：</label>
+                <textarea 
+                    id="inputText" 
+                    placeholder="请输入任何需要进行事实核查的文本内容，例如新闻、社交媒体帖子、或任何声明..."></textarea>
+                
+                <div class="examples">
+                    <button class="example-btn" onclick="loadExample(1)">示例 1: 科学事实</button>
+                    <button class="example-btn" onclick="loadExample(2)">示例 2: 健康谣言</button>
+                    <button class="example-btn" onclick="loadExample(3)">示例 3: 混合内容</button>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" id="checkBtn" onclick="checkFacts()">
+                        🔍 开始检查
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearInput()">
+                        🗑️ 清空
+                    </button>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <strong>💡 工作原理：</strong> Model Court 使用多个独立的 AI 模型（陪审团）来评估您的文本。
+                每个模型可能使用不同的方法（逻辑推理、网络搜索、知识库查询）来判断内容的真实性。
+                最后，法官模型会综合所有陪审团的意见，给出最终判决。
+            </div>
+        </div>
+        
+        <div id="loading" class="card loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>正在进行事实核查...</p>
+            <p style="color: #6b7280; font-size: 0.9em; margin-top: 10px;">
+                多个 AI 模型正在独立评估您的内容
+            </p>
+        </div>
+        
+        <div id="result" class="card result">
+            <!-- 结果将动态插入这里 -->
+        </div>
+        
+        <div id="error" class="card" style="display: none;">
+            <div class="error">
+                <strong>❌ 错误：</strong>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 检查 API 状态
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                const statusEl = document.getElementById('status');
+                
+                if (data.status === 'ready') {
+                    statusEl.textContent = `✅ 就绪 (${data.juries_count} 个评审模型)`;
+                    statusEl.className = 'status-badge ready';
+                } else {
+                    statusEl.textContent = '❌ 初始化失败';
+                    statusEl.className = 'status-badge error';
+                    showError('Court 初始化失败: ' + data.error);
+                }
+            } catch (error) {
+                document.getElementById('status').textContent = '❌ 无法连接';
+                document.getElementById('status').className = 'status-badge error';
+                showError('无法连接到后端服务器。请确保服务器正在运行。');
+            }
+        }
+        
+        // 加载示例
+        function loadExample(num) {
+            const examples = {
+                1: "近日社交媒体流传：\n1. 喝高度白酒可以杀死体内的流感病毒。\n2. 埃隆·马斯克宣布收购了可口可乐公司。",
+                2: "地球是平的，这是被广泛证实的科学事实。人类从未登上过月球，所有的登月照片都是在好莱坞拍摄的。",
+                3: "人类有 206 块骨头。地球绕太阳公转需要约 365.25 天。疫苗会改变人类的 DNA。"
+            };
+            document.getElementById('inputText').value = examples[num];
+        }
+        
+        // 清空输入
+        function clearInput() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('result').classList.remove('show');
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        // 显示错误
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        // 事实检查
+        async function checkFacts() {
+            const text = document.getElementById('inputText').value.trim();
+            
+            if (!text) {
+                alert('请输入需要检查的文本内容');
+                return;
+            }
+            
+            // 隐藏之前的结果
+            document.getElementById('result').classList.remove('show');
+            document.getElementById('error').style.display = 'none';
+            
+            // 显示加载状态
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('checkBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/api/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Unknown error');
+                }
+                
+                displayResult(data);
+                
+            } catch (error) {
+                showError('检查失败: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('checkBtn').disabled = false;
+            }
+        }
+        
+        // 显示结果
+        function displayResult(data) {
+            const resultDiv = document.getElementById('result');
+            
+            let html = `
+                <div class="verdict-banner ${data.overall}">
+                    ${data.summary}
+                </div>
+            `;
+            
+            data.claims.forEach((claim, index) => {
+                html += `
+                    <div class="claim-item">
+                        <div class="claim-header">
+                            <h3>指控 ${index + 1}</h3>
+                            <span class="claim-verdict ${claim.verdict}">
+                                ${getVerdictText(claim.verdict)}
+                            </span>
+                        </div>
+                        
+                        <div class="claim-text">${claim.text}</div>
+                        
+                        ${claim.from_cache ? `
+                            <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #3b82f6;">
+                                <strong>📦 [直接裁定]</strong> 命中历史有效判例 (ID: ${claim.cache_id || 'N/A'})
+                            </div>
+                        ` : ''}
+                        
+                        ${claim.precedents && claim.precedents.length > 0 ? `
+                            <div class="precedents-section">
+                                <h4>📚 [历史判例] 发现 ${claim.precedents.length} 条相似过往案件：</h4>
+                                ${claim.precedents.map(p => `
+                                    <div class="precedent-item">
+                                        <span class="precedent-similarity">[相似度: ${(p.similarity * 100).toFixed(1)}%]</span>
+                                        ${p.text.substring(0, 80)}${p.text.length > 80 ? '...' : ''}
+                                        <span style="color: #6b7280;"> → ${getVerdictText(p.verdict)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${!claim.from_cache ? `
+                            <div class="jury-votes">
+                                <h4>👥 [陪审团投票] (${claim.jury_votes.length} 位评审员，${(claim.objection_ratio * 100).toFixed(0)}% 提出异议):</h4>
+                                ${claim.jury_votes.map(vote => `
+                                    <div class="jury-vote">
+                                        <div class="jury-vote-header">
+                                            <span class="jury-name">${vote.jury_name}</span>
+                                            <span class="jury-decision ${vote.decision}">
+                                                ${getDecisionText(vote.decision)} (${(vote.confidence * 100).toFixed(0)}%)
+                                            </span>
+                                        </div>
+                                        <div class="jury-reason"><strong>理由:</strong> ${vote.reason}</div>
+                                        ${vote.reference_summary ? `
+                                            <div class="jury-reference">
+                                                <strong>📄 参考证据:</strong><br>
+                                                ${vote.reference_summary.substring(0, 300)}${vote.reference_summary.length > 300 ? '...' : ''}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <div class="claim-reasoning">
+                                <strong>⚖️ 法官综述：</strong>
+                                <p>${claim.judge_reasoning}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            html += `
+                <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; font-size: 0.9em; color: #6b7280;">
+                    <strong>Case ID:</strong> ${data.case_id}<br>
+                    <strong>Status:</strong> ${data.status}
+                </div>
+            `;
+            
+            resultDiv.innerHTML = html;
+            resultDiv.classList.add('show');
+        }
+        
+        function getVerdictText(verdict) {
+            const texts = {
+                'supported': '✅ SUPPORTED',
+                'refuted': '❌ REFUTED',
+                'suspicious': '⚠️ SUSPICIOUS',
+                'factual': '✅ 事实准确',
+                'false': '❌ 包含虚假信息',
+                'questionable': '⚠️ 存疑'
+            };
+            return texts[verdict] || verdict.toUpperCase();
+        }
+        
+        function getDecisionText(decision) {
+            const texts = {
+                'no_objection': '无异议',
+                'suspicious_fact': '存疑',
+                'reasonable_doubt': '有合理怀疑',
+                'abstain': '缺席'
+            };
+            return texts[decision] || decision;
+        }
+        
+        // 页面加载时检查状态
+        window.onload = checkStatus;
+    </script>
+</body>
+</html>
+

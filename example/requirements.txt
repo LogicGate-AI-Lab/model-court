@@ -1,0 +1,51 @@
+# =============================================================================
+# Model Court Example Application Requirements
+# Web 应用和完整示例所需的依赖
+# =============================================================================
+#
+# 安装说明：
+#
+# 1. 进入 example 目录：cd example
+#
+# 2. 安装依赖：pip install -r requirements.txt
+#
+# 3. 配置环境变量：
+#    - 复制 env.example 为 .env
+#    - 填入你的 OPENROUTER_API_KEY
+#
+# 4. 运行示例：
+#    - 命令行示例：python example_full.py
+#    - Web 应用：python backend/app.py（然后访问 http://localhost:5000）
+#
+# =============================================================================
+
+# Web Framework
+# -----------------------------------------------------------------------------
+flask>=3.0.0,<4.0.0                 # Web 框架
+flask-cors>=5.0.0,<6.0.0            # CORS 支持
+python-dotenv>=1.0.0,<2.0.0         # 环境变量管理
+
+# Core Model Court (建议从父目录安装)
+# -----------------------------------------------------------------------------
+# 推荐方式：pip install -e ..[full]
+# 或者直接安装依赖：
+
+# 数据处理
+pydantic>=2.9.0,<3.0.0
+python-dateutil>=2.9.0,<3.0.0
+
+# LLM Providers
+openai>=1.54.0,<2.0.0
+google-generativeai>=0.8.0,<1.0.0
+anthropic>=0.39.0,<1.0.0
+
+# RAG & Embeddings
+numpy>=1.26.0,<3.0.0
+torch>=2.1.0,<3.0.0
+sentence-transformers>=3.0.0,<4.0.0
+chromadb>=0.5.0,<0.6.0
+
+# Search
+aiohttp>=3.10.0,<4.0.0
+httpx>=0.27.0,<1.0.0
+duckduckgo-search>=6.0.0,<7.0.0

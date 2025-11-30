@@ -1,0 +1,159 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel>=0.42.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "model-court"
+version = "0.0.1"
+description = "A multi-model ensemble system using triangular review for fact-checking and verification"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "LogicGate AI Lab", email = "contact@logicgate-ai.com"}
+]
+maintainers = [
+    {name = "LogicGate AI Lab", email = "contact@logicgate-ai.com"}
+]
+keywords = ["ai", "llm", "fact-checking", "model-ensemble", "verification"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+requires-python = ">=3.9,<4.0"
+
+# 核心依赖 - 最小化，只包含必须的
+dependencies = [
+    "pydantic>=2.9.0,<3.0.0",
+    "python-dateutil>=2.9.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+# LLM Providers - 用户按需安装
+llm = [
+    "openai>=1.54.0,<2.0.0",
+    "google-generativeai>=0.8.0,<1.0.0",
+    "anthropic>=0.39.0,<1.0.0",
+]
+
+# RAG & Embeddings - 需要向量搜索功能时安装
+rag = [
+    "numpy>=1.26.0,<3.0.0",
+    "torch>=2.1.0,<3.0.0",
+    "sentence-transformers>=3.0.0,<4.0.0",
+    "chromadb>=0.5.0,<0.6.0",
+]
+
+# Search - 需要网络搜索功能时安装
+search = [
+    "aiohttp>=3.10.0,<4.0.0",
+    "httpx>=0.27.0,<1.0.0",
+    "duckduckgo-search>=6.0.0,<7.0.0",
+]
+
+# Full - 安装所有可选功能
+full = [
+    # LLM
+    "openai>=1.54.0,<2.0.0",
+    "google-generativeai>=0.8.0,<1.0.0",
+    "anthropic>=0.39.0,<1.0.0",
+    # RAG
+    "numpy>=1.26.0,<3.0.0",
+    "torch>=2.1.0,<3.0.0",
+    "sentence-transformers>=3.0.0,<4.0.0",
+    "chromadb>=0.5.0,<0.6.0",
+    # Search
+    "aiohttp>=3.10.0,<4.0.0",
+    "httpx>=0.27.0,<1.0.0",
+    "duckduckgo-search>=6.0.0,<7.0.0",
+]
+
+# Development - 开发工具
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=0.23.0,<1.0.0",
+    "pytest-cov>=5.0.0,<6.0.0",
+    "mypy>=1.11.0,<2.0.0",
+    "black>=24.0.0,<25.0.0",
+    "ruff>=0.6.0,<1.0.0",
+    "ipython>=8.12.0,<9.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/LogicGate-AI-Lab/model-court"
+Repository = "https://github.com/LogicGate-AI-Lab/model-court"
+Documentation = "https://github.com/LogicGate-AI-Lab/model-court#readme"
+Issues = "https://github.com/LogicGate-AI-Lab/model-court/issues"
+Changelog = "https://github.com/LogicGate-AI-Lab/model-court/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["model_court", "model_court.core", "model_court.llm", "model_court.references", "model_court.embeddings", "model_court.code", "model_court.utils"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+model_court = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | example
+  | 临时自用文件
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+exclude = [
+    ".eggs",
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "build",
+    "dist",
+    "example",
+    "临时自用文件",
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude = [
+    "example/",
+    "临时自用文件/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --cov=model_court --cov-report=html --cov-report=term"

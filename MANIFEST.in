@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+include requirements.txt
+include api_docs.md
+recursive-include model_court *.py
+
