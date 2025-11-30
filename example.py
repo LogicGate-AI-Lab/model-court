@@ -1,0 +1,247 @@
+import asyncio
+from datetime import datetime, timedelta
+
+# -----------------------------------------------------------------------------
+# 0. 导入 Model Court 核心包
+# -----------------------------------------------------------------------------
+from modelcourt import Court, Prosecutor, Jury, Judge
+from modelcourt.code import SqliteCourtCode
+from modelcourt.references import (
+    GoogleSearchReference, 
+    WebSearchReference,     # 开源搜索 (如 DuckDuckGo/SearxNG)
+    LocalRAGReference
+)
+
+# -----------------------------------------------------------------------------
+# 1. 基础设施初始化 (Infrastructure)
+# -----------------------------------------------------------------------------
+
+# A. 初始化判例库 (混合检索：SQL + Vector)
+"""
+这里用户可以选择不同的预设判例库，暂时不支持用户自定义判例库
+现在支持的判例库是包含vector查询，但是也可以直接看到的SQL数据库
+也就是说用户可以直接看到SQL数据库的内容并修改，同时结果也会同步更新向量
+在Prosecutor搜索的时候，会直接进行向量查询（因为大概率无法直接查到同样的结果）
+--------
+目前考虑设置的reference类别包括：
+1、Google Search 需要API参数
+2、Web Search 使用开源方案
+3、RAG 知识库，需要初始化、建库，添加新词条需要embedding，其他程序也可以修改RAG从而实现多代理或搭配协作；默认使用ChromaDB
+4、SimpleTextStorage 直接使用一个文本文档作为引用源，用户可以方便撰写text，text本身直接会被作为一个prompt提供给jury（现在LLM的上下文窗口非常大）
+"""
+court_db = SqliteCourtCode(
+    db_path="./fact_check_history.db",
+    default_validity_period=timedelta(days=30),
+    enable_vector_search=True # 开启向量检索以查找相似判例
+)
+
+# B. 初始化参考资料 (Reference)
+
+# 资料源 1: Google Search (API)
+google_ref = GoogleSearchReference(
+    api_key="YOUR_KEY", 
+    cse_id="YOUR_ID",
+    search_depth=3
+)
+
+# 资料源 2: RAG 知识库
+# 逻辑优化：检测到路径下有 DB 就加载，没有就根据 source_folder 初始化
+rumor_rag = LocalRAGReference(
+    # 用户可选OpenAI在线API，本地小模型MiniLM，本地大模型BGE-Large等。这个一定要设置成lazy loading，用的人在用的时候再下载。
+    # 参数包括：MiniLM, BGE-Large, OpenAI（如果选OpenAI，则还要填写API参数）
+    embedding_model="MiniLM", 
+    # model_api_key="..." # 如果选OpenAI的embedding方式，则需要选择这个
+
+    collection_name="common_rumors",
+    persist_directory="./rag_db_storage",  # 向量库存储位置
+    source_folder="./rumor_txt_files",     # 原始文件位置
+    embedding_model="text-embedding-3-small",
+    mode="append", # "overwrite" | "append" | "read_only"
+    top_k=2
+)
+
+# -----------------------------------------------------------------------------
+# 2. 初始化检察官 (Prosecutor)
+# -----------------------------------------------------------------------------
+
+prosecutor = Prosecutor(
+    court_code=court_db,
+
+    # 启用自动拆分：将长文拆解为独立 Claim，如果不启用，则将整个case视为一个claim
+    # 如果不拆分case为若干个claim，则不需要配置model
+    # 如果要将case拆分为claims，并各自检查是否存在于code中，则需要配置model
+    # claims的格式：若干行，每一行有三个元素：（如果整个case视为一个claim，则只有一行）
+    #       claim
+    #       claim是否存在于code中（分为三类：查到了完全相同的claim、近似的claim、没有查到近似的claim）
+    #       claim如果在code中有近似的或者相同的，其内容是什么写在这里
+    auto_claim_splitting=True, 
+    
+    # 统一模型配置字典 (无需 model_type，靠 provider 区分)
+    model={
+        "provider": "openai",
+        "api_key": "sk-...",
+        "model_name": "gpt-3.5-turbo", # 便宜模型做拆分
+        "temperature": 0.1
+    },
+    prosecutor_prompt="""
+    你是一名严格的检察官。请将输入的案情（Case）拆解为独立的、可验证的事实断言（Claims）。
+    """
+)
+
+# -----------------------------------------------------------------------------
+# 3. 组建陪审团 (The Juries)
+# -----------------------------------------------------------------------------
+
+# 采用三明治结构构建LLM指令：用户只需要写jury针对claim类别的判断标准、objection的判定阈值
+# 其他的系统PROMPT，包括输出格式、浏览器类别的cycle指令等，都在后端用system prompt写好（目前先硬编码system prompt，后续考虑加入用户自定义system prompt的功能）
+
+# 提醒用户陪审员可能的输出选项："no_objection", "suspicious_fact", "reasonable_doubt"
+# 如果写到输出结果相关的内容，用户一定要针对这三个输出选项进行适应性修改
+
+
+# Jury 1: 逻辑审查员 (Blind)
+jury_logic = Jury(
+    name="Logic_Checker_GPT",
+    model={
+        "provider": "openai",
+        "api_key": "sk-...",
+        "model_name": "gpt-4-turbo",
+        "temperature": 0.0
+    },
+    reference=None, # None = Blind Mode，如果没有写参数reference，则默认为None
+    jury_prompt="请仅根据逻辑一致性和常识判断此 Claim 是否成立，不要编造事实。"
+)
+
+# Jury 2: 网络侦探 (Google + Aggressive Search)
+"""
+STEEL框架
+1、初步检索 initial retrieval
+2、自我评估：llm assessment
+如果证据充足，直接给出结果
+如果证据不足，则进行re-search mechanism，不停生成新的搜索查询词（updated queries）来在互联网上搜索
+证据会被聚合在一起（established evidence）
+上述检索会进行多轮，直到证据链完整
+3、最终裁决：final verdict 基于多轮收集到的详尽证据，模型最终输出True/False&False的原因理由
+"""
+jury_web = Jury(
+    name="Web_Detective_Gemini",
+    model={
+        "provider": "google",  # 假设适配了 Gemini
+        "api_key": "AIza...",
+        "model_name": "gemini-1.5-pro",
+    },
+    reference=google_ref,
+    # 你的新增特性：循环搜索模式
+    search_cycle_mode=True, 
+    search_cycle_max=3, 
+    jury_prompt="你必须找到确凿的外部链接证据。如果初步搜索无果，尝试更换关键词再次搜索。"
+)
+
+# Jury 3: 档案管理员 (RAG)
+jury_rag = Jury(
+    name="Archive_Keeper_Llama",
+    model={
+        "provider": "openai_compatible", # 连接本地 LLM
+        "base_url": "http://localhost:8000/v1",
+        "api_key": "empty",
+        "model_name": "llama-3-70b"
+    },
+    reference=rumor_rag,
+    jury_prompt="请在本地谣言库中检索是否存在匹配的记录。"
+)
+
+# -----------------------------------------------------------------------------
+# 4. 组建法庭 (Court Assembly)
+# -----------------------------------------------------------------------------
+
+# 初始化法官，负责汇总近似判例和juries投票结果
+judge = Judge(
+    # 法官模型配置
+    model={
+        "provider": "openai",
+        "model_name": "gpt-4o",
+        "temperature": 0.2
+    }
+)
+
+# 最终实例化的model court对象，配置好court后，用户只需要调用Court对象并输入case content参数，就可以进行庭审了
+fact_check_court = Court(
+    prosecutor=prosecutor,
+    juries=[jury_logic, jury_web, jury_rag],
+    judge=judge,
+    
+    
+    # 判决逻辑配置 (Rule-based Verdict)
+    # 逻辑：统计 'objection' (即非 no_objection) 的票数比例
+    verdict_rules={
+        # 如果 0 个反对 -> Supported
+        "supported":  {"operator": "eq", "value": 0},   
+        # 如果反对票 < 50% (且不为0) -> Suspicious
+        "suspicious": {"operator": "lt", "value": 0.5}, 
+        # 其他情况 (>= 50%) -> Refuted (Default)
+        "refuted":    "default" 
+    },
+    
+    quorum=3,         # 必须3个都成功返回，否则流审 (或者设为2允许1个掉队)
+    concurrency_limit=3
+)
+# 这里要注意court庭审每一个claim，都会将结果记录到code中
+
+# -----------------------------------------------------------------------------
+# 5. 开庭审理 (Execution - run_trial)
+# -----------------------------------------------------------------------------
+
+async def run_trial():
+    # 1. 准备案情
+    case_text = """
+    近日社交媒体流传：
+    1. 喝高度白酒可以杀死体内的流感病毒。
+    2. 埃隆·马斯克宣布收购了可口可乐公司。
+    """
+    
+    print(f"🏛️  Model Court 开庭受理中...\nCase: {case_text.strip()[:30]}...")
+
+    # 2. 执行审理 (Court.hear 内部自动调度 Prosecutor -> Juries -> Judge)
+    # 返回的是一个结构化的 CaseReport 对象
+    report = await fact_check_court.hear(case_text)
+
+    # 3. 打印完整判决书
+    print("\n" + "="*50)
+    print(f"📜 判决意见书 (Case ID: {report.case_id})")
+    print("="*50)
+
+    # 遍历每个 Claim 的结果
+    for idx, claim_res in enumerate(report.claims, 1):
+        print(f"\n🔹 指控 {idx}: {claim_res.text}")
+        
+        # A. 展示 Prosecutor 的查重结果
+        if claim_res.source == "cache":
+            print(f"   [直接裁定] 命中历史有效判例 (ID: {claim_res.cache_id})")
+            print(f"   ⚖️  结果: {claim_res.verdict.upper()}")
+            continue # 如果命中缓存，后面就不展示了
+            
+        # B. 展示 Prosecutor 的相似判例证据 (如果有)
+        if claim_res.precedents:
+            print(f"   [历史判例] 发现 {len(claim_res.precedents)} 条相似过往案件，已提交法官参考。")
+
+        # C. 展示 Juries 投票详情
+        print("   [陪审团投票]")
+        for vote in claim_res.jury_votes:
+            icon = "✅" if vote.decision == "no_objection" else "❌"
+            # 如果是搜索模式，打印出找到的 Reference
+            ref_info = f" (Ref: {vote.reference_summary})" if vote.reference_summary else ""
+            print(f"     {icon} {vote.jury_name}: {vote.decision}{ref_info}")
+            if vote.reason:
+                print(f"        Reason: {vote.reason[:60]}...")
+
+        # D. 展示最终判决
+        print(f"   ⚖️  最终判决: 【{claim_res.verdict.upper()}】")
+        print(f"   📝 法官综述: {claim_res.judge_reasoning}")
+
+    # 4. 异常处理展示
+    if report.status == "mistrial":
+        print(f"\n⚠️ 审判无效 (Mistrial): {report.error_message}")
+
+# 运行
+if __name__ == "__main__":
+    asyncio.run(run_trial())
