@@ -1,10 +1,8 @@
 # 更新日志
 
-所有重要变更都会记录在此文件中。
+所有重要变更都会记录在此文件中，版本格式遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
-版本格式遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
-
-## [0.0.1] - 2024-11-30
+## [0.0.1][0.0.1] - 2025-11-30
 
 ### 新增功能
 
@@ -78,20 +76,6 @@ Embedding 模型
 
 ## 未来计划
 
-### v0.1.0 (计划中)
-
-- 添加更多 LLM Provider
-- 支持批量处理
-- 性能优化
-- 更多测试用例
-
-### v0.2.0 (计划中)
-
-- Web UI 增强
-- 用户认证
-- API 限流
-- 数据导出功能
-
----
+进行更多的研究，提升model court的有效性。
 
 [0.0.1]: https://github.com/LogicGate-AI-Lab/model-court/releases/tag/v0.0.1

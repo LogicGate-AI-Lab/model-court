@@ -9,10 +9,10 @@ description = "A multi-model ensemble system using triangular review for fact-ch
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-    {name = "LogicGate AI Lab", email = "contact@logicgate-ai.com"}
+    {name = "Jeff Liu", email = "jeff.pang.liu@gmail.com"}
 ]
 maintainers = [
-    {name = "LogicGate AI Lab", email = "contact@logicgate-ai.com"}
+    {name = "Jeff Liu", email = "jeff.pang.liu@gmail.com"}
 ]
 keywords = ["ai", "llm", "fact-checking", "model-ensemble", "verification"]
 classifiers = [
@@ -98,7 +98,7 @@ Issues = "https://github.com/LogicGate-AI-Lab/model-court/issues"
 Changelog = "https://github.com/LogicGate-AI-Lab/model-court/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["model_court", "model_court.core", "model_court.llm", "model_court.references", "model_court.embeddings", "model_court.code", "model_court.utils"]
+packages = {find = {where = ["."], include = ["model_court*"]}}
 include-package-data = true
 
 [tool.setuptools.package-data]
