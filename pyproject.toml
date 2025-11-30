@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "model-court"
-version = "0.0.1"
+version = "0.0.2"
 description = "A multi-model ensemble system using triangular review for fact-checking and verification"
 readme = "README.md"
 license = {file = "LICENSE"}

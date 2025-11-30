@@ -1,209 +1,231 @@
-﻿# Model Court: A Multi-Model Ensemble Framework for Verification
+# Model Court: A Multi-Model Ensemble Framework for Verification
 
-## 项目概览 (V0.0.1)
+[![EN](https://img.shields.io/badge/lang-EN-blue)](README.md) [![ZH](https://img.shields.io/badge/lang-ZH-red)](README_zh.md)
 
-Model Court是一个开源的、旨在方便通过多个模型进行交叉验证和核实的框架。**Model Court参考了美国法庭的一些概念，使用检察官、陪审团、法官的庭审流程来完成一个事实的校验，支持互联网检索、RAG检索等。**目前版本是2025年11月30日发布的0.0.1测试版，实现了基本功能。
+## Project Overview (V0.0.2)
 
-Model Court 使用法庭审判的方式进行 AI 内容验证：
+Model Court is an open-source framework designed to make cross-verification and fact-checking with multiple models easier. **Model Court is inspired by concepts from the U.S. courtroom system, using the roles of Prosecutor, Jury, and Judge to verify facts, with support for internet search, RAG-based retrieval, and more.**  
+The current version is **0.0.2**, released on **2025-11-30**, and provides the basic core functionality.
 
-- **检察官**：预处理案件，查询历史判例，如果已经有过判例且未过期，则直接引用判例结果，不进入庭审
-- **陪审团**：多个独立的 LLM 评估员，相互独立，建议每个陪审员使用不同的检索工具和不同公司的LLM
-- **法官**：汇总投票，给出最终判决，最终判决作为判例存储在判例库中
+Model Court performs AI content verification using a courtroom-style process:
 
-通过这样的庭审方式，**可以在需要校验LLM输出结果的情境下提升可靠性**，例如：
+- **Prosecutor**: Preprocesses the case, queries historical precedents. If a valid precedent already exists and has not expired, the result is returned directly without entering a full trial.
+- **Jury**: Multiple independent LLM evaluators. Each juror is independent; it is recommended that each uses different retrieval tools and models from different providers.
+- **Judge**: Aggregates votes and produces the final verdict, which is then stored as a precedent in the precedent database.
 
-- **事实核查**：判断新闻、社交媒体内容的真实性
-- **内容审核**：检测违规、有害或误导性内容
-- **知识问答**：验证AI生成答案的准确性
-- **学术研究**：多模型集成提高结论可靠性
-- **合规检查**：验证内容是否符合特定规则或标准
+This courtroom-style process can **improve reliability in scenarios where LLM outputs need to be verified**, such as:
 
-**具体的庭审流程如下：**
+- **Fact-checking**: Determining the factual accuracy of news and social media content.
+- **Content moderation**: Detecting harmful, violating, or misleading content.
+- **Knowledge Q&A**: Verifying the correctness of AI-generated answers.
+- **Academic research**: Improving robustness via multi-model ensemble.
+- **Compliance checking**: Verifying whether content complies with certain rules or standards.
+
+**The basic courtroom flow is as follows:**
 
 ```
-案件输入 → 检察官 → [陪审员1, 陪审员2, ..., 陪审员N] → 法官 → 判决结果
-              ↓                    ↓
-          判例库                参考资料
-        (历史判决)            (证据来源)
+Case Input → Prosecutor → [Juror1, Juror2, ..., JurorN] → Judge → Verdict
+                ↓                         ↓
+         Precedent Database          Reference Sources
+           (Past Rulings)              (Evidence)
 ```
 
-完整庭审流程参见后面的详细介绍部分。
+For the full courtroom process, see the detailed introduction below.
 
 ---
 
-相关文档：
+Related documents:
 
-- [API 文档](api_docs.md) - 完整的 API 参考和示例
-- [安装指南](INSTALLATION.md) - 详细的安装和配置说明
-- [更新日志](CHANGELOG.md) - 版本更新记录
-- [贡献指南](CONTRIBUTING.md) - 如何为项目做贡献
+- [API Documentation](api_docs.md) – Full API reference and examples  
+- [Installation Guide](INSTALLATION.md) – Detailed installation and configuration  
+- [Changelog](CHANGELOG.md) – Version history  
+- [Contribution Guide](CONTRIBUTING.md) – How to contribute to this project  
 
-## 安装
+## Installation
 
-本项目已在[pypi](https://pypi.org/project/model-court/)发布，可通过pip快速安装。
+This project is published on [PyPI](https://pypi.org/project/model-court/) and can be installed via `pip`.
 
-**安装**
+**Install**
 
 ```bash
-# 安装核心包（最小依赖）
+# Install core package (minimal dependencies)
 pip install model-court
 
-# 或安装完整版（包含所有LLM、RAG、搜索功能）
+# Or install the full version (includes all LLM, RAG, search features)
 pip install model-court[full]
 
-# 开发版安装（从源码）
+# Development install (from source)
 pip install -e .
-pip install -e .[full]  # 完整版
+pip install -e .[full]  # Full version from source
 ```
 
-> **注意**：包名是 `model-court`（带连字符），但导入时使用 `model_court`（下划线）
-
+> **Note:** The package name is `model-court` (with a hyphen), but the import name is `model_court` (with an underscore).
 
 ---
 
+## Detailed Introduction
 
-## 详细介绍
+### Full Courtroom Workflow
 
-### 完整庭审流程
-
-**完整庭审流程如下：**
+**The full courtroom workflow is as follows:**
 
 ```
 ┌───────────────────────────────────────────┐
 │               🏛️ Model Court             │
-│                庭审主流程                  │
+│              Main Courtroom Flow         │
 └───────────────────────────────────────────┘
                      │
                      ▼
         ┌──────────────────────────┐
-        │   输入 Case 文本（案情） │
+        │     Input Case Text      │
         └──────────────────────────┘
                      │
                      ▼
    ┌───────────────────────────────────────┐
-   │           1. 检察官（Prosecutor）      │
+   │        1. Prosecutor (Prosecutor)     │
    ├───────────────────────────────────────┤
-   │ • 对案情进行 Claim 拆分（若启用）       │
-   │ • 查询判例库（SQL + Vector），避免重复评估  
-   │     - 命中缓存 → 直接返回历史裁决        │
-   │     - 存在相似判例 → 提供给法官参考       │
+   │ • Optionally split the case into      │
+   │   multiple claims (if enabled)        │
+   │ • Query precedent DB (SQL + Vector)   │
+   │   to avoid redundant evaluation       │
+   │     - Cache hit → return past ruling  │
+   │     - Similar precedent → provide     │
+   │       as reference to the Judge       │
    └───────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────┐
-│      2. 并行启动多个陪审团（Juries）        │
+│     2. Launch Multiple Juries in Parallel   │
 └─────────────────────────────────────────────┘
                      │
                      ▼
    ┌──────────────────────────────────────────────┐
-   │                🧑‍⚖️ 陪审团投票流程              │
+   │           🧑‍⚖️  Jury Voting Process           │
    ├──────────────────────────────────────────────┤
-   │ 通过相互独立的大模型进行交叉验证，避免幻觉
-   │ 每个陪审团负责不同类别的判断，可以基于LLM本身，
-   │ 也可以使用预设的可插拔参考资料：  
-   │  
-   │ ① 逻辑审查：仅基于逻辑与常识评估 Claim   
-   │ ② 网络检索：基于实时网络搜索验证 Claim （支持迭代验证）
-   │ ③ RAG：基于RAG，Model Court已将创建、embedding、查询等功能集成 
-   │ ④ Text文档库：基础事实库，可以提供事实文本判定   
-   │  
-   │ 所有陪审团输出三选一：                         │
-   │      • "no_objection"       （支持）          │
-   │      • "suspicious_fact"    （证据不足）       │
-   │      • "reasonable_doubt"   （反驳） 
-   │ 注意：如果一个陪审团成员出错或者无法给出建议，会按照abstains (缺席/弃权)来计算
-          │
+   │ Cross-validate claims using independent LLMs │
+   │ to reduce hallucinations.                    │
+   │ Each jury can focus on different criteria,   │
+   │ either purely model-based or using pluggable │
+   │ reference sources:                           │
+   │                                              │
+   │ ① Logical review: evaluate based on logic    │
+   │    and common sense only.                    │
+   │ ② Web search: validate claims using real-    │
+   │    time web search (supports iterative       │
+   │    verification).                            │
+   │ ③ RAG: use integrated RAG pipeline; Model    │
+   │    Court handles creation, embedding, and    │
+   │    retrieval.                                │
+   │ ④ Text document store: a basic fact store    │
+   │    providing textual factual references.     │
+   │                                              │
+   │ All jury members choose exactly one of:      │
+   │      • "no_objection"     (support)          │
+   │      • "suspicious_fact"  (insufficient      │
+   │                            evidence)         │
+   │      • "reasonable_doubt" (counter-evidence) │
+   │ Note: if a jury member fails or cannot       │
+   │ provide a conclusion, it is counted as       │
+   │ "abstains".                                  │
    └──────────────────────────────────────────────┘
                      │
                      ▼
        ┌───────────────────────────────────────┐
-       │            3. 法官（Judge）           │
+       │             3. Judge (Judge)          │
        ├───────────────────────────────────────┤
-       │ • 汇总陪审团投票                       │
-       │ • 对相似历史判例进行参考               │
-       │ • 根据规则（Rule-based）判决，必须至少达到quorum最少合法投票数量才能进行判定          │
-       │       ▶ supported（无反对）             │
-       │       ▶ suspicious（少量反对）           │
-       │       ▶ refuted（反对占多数）           │
-       │ • 输出法官理据（Judge Reasoning）       │
+       │ • Aggregates jury votes               │
+       │ • References similar precedents       │
+       │ • Rule-based verdict logic; requires  │
+       │   reaching a minimum quorum of valid  │
+       │   votes                               │
+       │       ▶ supported  (no objections)    │
+       │       ▶ suspicious (some objections)  │
+       │       ▶ refuted   (majority oppose)   │
+       │ • Outputs Judge reasoning             │
        └───────────────────────────────────────┘
                      │
                      ▼
      ┌───────────────────────────────────────┐
-     │    4. Court 生成完整 CaseReport        │
+     │      4. Court Generates CaseReport    │
      ├───────────────────────────────────────┤
-     │ • 结构化 Claim 列表                     │
-     │ • 各陪审团票数与理由                    │
-     │ • 历史判例引用（如有）                  │
-     │ • 法官最终裁定                          │
-     │ • 记录写入判例库（SQL + Vector）    │
+     │ • Structured list of claims           │
+     │ • Jury votes and rationales           │
+     │ • Referenced precedents (if any)      │
+     │ • Final judgment                      │
+     │ • Persisted into precedent DB         │
+     │   (SQL + Vector)                      │
      └───────────────────────────────────────┘
 
 ```
 
-### 完整示例
+### Full Example
 
-必须设置检察官、陪审团、法官后才能使用模型法庭。设置很简单，主要就是指定使用的模型，并配置API。这里推荐使用OpenRouter，一个API就可以配置所有的LLM；系统也支持ChatGPT, Gemini, Claude等主流LLM。具体参见后面相关的说明。
+You must configure the Prosecutor, Jury, and Judge before you can use Model Court. The setup is simple: specify which models to use and configure their APIs.  
+We recommend using **OpenRouter**, which allows you to access many LLMs with a single API key. The system also supports ChatGPT, Gemini, Claude, etc. See later sections for more details.
 
-**注意：庭审必须使用异步。**
+> **Note: the courtroom process must be run asynchronously.**
 
 ```python
 import asyncio
 import os
 from pathlib import Path
-from dotenv import load_dotenv  # 记得导入这个来加载 .env
+from dotenv import load_dotenv  # Load .env for environment variables
 
 from model_court import Court, Prosecutor, Jury, Judge
 from model_court.code import SqliteCourtCode
 from model_court.references import SimpleTextStorage, LocalRAGReference
 
-# 加载环境变量
+# Load environment variables
 load_dotenv()
 
 # ----------------------------------------------------------------------
-# 0. 准备工作
+# 0. Preparation
 # ----------------------------------------------------------------------
-# 在运行此 Demo 之前，请确保完成以下准备：
+# Before running this demo, please make sure you have completed:
 #
-# 1. 环境配置 (.env)
-#    - 在当前目录下创建一个 .env 文件，推荐使用OpenRouter统一配置
-#    - 写入 API Key: OPENROUTER_API_KEY=sk-or-v1-xxxx...
+# 1. Environment configuration (.env)
+#    - Create a .env file in the current directory
+#    - Add API key, e.g.:
+#      OPENROUTER_API_KEY=sk-or-v1-xxxx...
 #
-# 2. 虚拟环境 (推荐)
+# 2. Virtual environment (recommended)
 #    - python -m venv .venv
-#    - source .venv/bin/activate  (或 Windows: .venv\Scripts\activate)
+#    - source .venv/bin/activate  (Windows: .venv\Scripts\activate)
 #
-# 3. 安装依赖
+# 3. Install dependencies
 #    - pip install model-court python-dotenv
-#    - pip install model-court[full] # 如果需要用rag功能，推荐全安装
+#    - pip install model-court[full]  # Recommended if using RAG
 #
-# 4. 数据文件准备 (对应代码中的路径，这里展示使用rag陪审员和text陪审员的用法)
-#    请确保目录结构如下，否则会报错：
+# 4. Prepare data files (paths used in the code; below we use RAG jury
+#    and text-based jury as examples)
+#    Make sure the directory structure looks like:
+#
 #    .
 #    ├── .env
-#    ├── example_court.py (本文件)
+#    ├── example_court.py (this file)
 #    └── data/
-#        ├── rag_init_files/           <-- RAG 陪审员的初始化资料夹
-#        │   └── rumors_2024.txt       (任意放入一些文本文件作为知识库)
-#        └── text_documents/           <-- 事实陪审员的参考文件夹
-#            └── basic_facts.txt       (放入基础事实文本，如公司规章、法律条文等)
+#        ├── rag_init_files/           <-- initialization corpus for RAG jury
+#        │   └── rumors_2024.txt       (any text files as knowledge base)
+#        └── text_documents/           <-- reference files for text-based jury
+#            └── basic_facts.txt       (basic factual text such as policies,
+#                                      legal clauses, etc.)
 # ----------------------------------------------------------------------
 
 
 # ----------------------------------------------------------------------
-# 1. 初始化法庭：检察官、陪审团、法官配置
+# 1. Initialize Court: configure Prosecutor, Juries, and Judge
 # ----------------------------------------------------------------------
 def build_court() -> Court:
-    # 1. 初始化判例库（持久化存储）
+    # 1. Initialize precedent store (persistent storage)
     court_code = SqliteCourtCode(
         db_path="./fact_check_history.db",
         enable_vector_search=True
     )
 
-    # 2. 初始化检察官（检查是否有判例，并拆解案情）
+    # 2. Initialize Prosecutor (check precedents and split claims)
     prosecutor = Prosecutor(
         court_code=court_code,
-        auto_claim_splitting=False, # 设置为True则会将Case拆分为若干个claims
+        auto_claim_splitting=False,  # Set True to split case into multiple claims
         model={
             "provider": "openai_compatible",
             "base_url": "https://openrouter.ai/api/v1",
@@ -211,12 +233,15 @@ def build_court() -> Court:
             "model_name": "openai/gpt-3.5-turbo",
             "temperature": 0.1
         },
-        prosecutor_prompt="你是一名严格的检察官。请将输入案情拆解为独立、可验证的事实断言。"
+        prosecutor_prompt=(
+            "You are a strict prosecutor. Break the input case into "
+            "independent, verifiable factual claims."
+        )
     )
 
-    # 3. 初始化陪审团（确保陪审员设置不重复，保证审查的相互独立性）
-  
-    # [逻辑视角]
+    # 3. Initialize juries (ensure diversity to keep them independent)
+
+    # [Logical perspective]
     jury_logic = Jury(
         name="Logic_Jury",
         model={
@@ -227,24 +252,30 @@ def build_court() -> Court:
             "temperature": 0.0
         },
         reference=None,
-        jury_prompt="根据逻辑一致性和常识判断此说法是否合理，不要编造信息。"
+        jury_prompt=(
+            "Evaluate whether the statement is reasonable based on logic "
+            "and common sense only. Do not fabricate information."
+        )
     )
 
-    # [网络检索视角]
+    # [Web search perspective]
     jury_web = Jury(
         name="Web_Jury",
         model={
             "provider": "openai_compatible",
             "base_url": "https://openrouter.ai/api/v1",
             "api_key": os.getenv("OPENROUTER_API_KEY"),
-            "model_name": "perplexity/sonar", # perplexity/sonar模型本身就支持联网搜索，所以不需要额外使用互联网工具
+            "model_name": "perplexity/sonar",  # This model has built-in web access
             "temperature": 0.0
         },
         reference=None,
-        jury_prompt="对每个 claim 进行网络检索，并基于最新信息作出判断。"
+        jury_prompt=(
+            "Use web search to verify each claim and base your judgment "
+            "on the latest information."
+        )
     )
 
-    # [RAG 本地库视角]
+    # [Local RAG perspective]
     jury_rag = Jury(
         name="RAG_Jury",
         model={
@@ -262,15 +293,17 @@ def build_court() -> Court:
             mode="append",
             top_k=2
         ),
-        jury_prompt="在本地谣言库中检索是否存在相关记录。"
+        jury_prompt="Query the local rumor knowledge base to see if related records exist."
     )
 
-    # [事实文档视角]
+    # [Text document perspective]
     basic_facts_path = Path("./data/text_documents/basic_facts.txt")
-  
-    # 这里为了 Demo 运行不报错，加一个文件检查
+
+    # Basic file check for demo convenience
     if not basic_facts_path.exists():
-        raise FileNotFoundError(f"Demo 运行失败：请先创建文件 {basic_facts_path}")
+        raise FileNotFoundError(
+            f"Demo failed: please create file {basic_facts_path} first."
+        )
 
     jury_facts = Jury(
         name="Facts_Jury",
@@ -282,10 +315,10 @@ def build_court() -> Court:
             "temperature": 0.1
         },
         reference=SimpleTextStorage(text=basic_facts_path.read_text(encoding="utf-8")),
-        jury_prompt="对照基础事实文本，判断 claim 是否符合事实。"
+        jury_prompt="Compare each claim against the basic facts text to decide if it is true."
     )
 
-    # 4. 初始化法官
+    # 4. Initialize Judge
     judge = Judge(
         model={
             "provider": "openai_compatible",
@@ -296,7 +329,7 @@ def build_court() -> Court:
         }
     )
 
-    # 5. 组建法庭
+    # 5. Assemble the Court
     return Court(
         prosecutor=prosecutor,
         juries=[jury_logic, jury_web, jury_rag, jury_facts],
@@ -312,108 +345,113 @@ def build_court() -> Court:
 
 
 # ----------------------------------------------------------------------
-# 2. 流程演示
+# 2. Run a demo
 # ----------------------------------------------------------------------
 async def demo():
-    # 实例化法庭，首次运行会加载 RAG 模型
+    # Instantiate the court; RAG models will be loaded on first run
     court = build_court()
-  
-    # 案件输入
-    case_text = "中国和美国已经建交300年，两国政府为此举办了庆祝仪式。"
 
-    # 法庭审案，这里必须用异步
+    # Case input
+    case_text = "China and the United States have already had diplomatic relations for 300 years, and the two governments held a celebration for this."
+
+    # Hear the case asynchronously
     report = await court.hear(case_text)
 
-    # 展示 Report 对象内容
-    print(f"\n{'='*20} 审理报告 (ID: {report.case_id}) {'='*20}")
-  
+    # Display contents of the Report object
+    print(f"
+{'='*20} Case Report (ID: {report.case_id}) {'='*20}")
+
     for i, res in enumerate(report.claims, 1):
-        print(f"\n[指控 {i}] {res.claim.text}")
-  
-        # 打印陪审团投票详情
+        print(f"
+[Claim {i}] {res.claim.text}")
+
+        # Print detailed jury votes
         for vote in res.jury_votes:
-            # 简单的格式化输出
             print(f"  - {vote.jury_name}: {vote.decision}")
             if vote.reason:
-                print(f"    理由: {vote.reason[:60]}...")
-  
-        print(f"\n  => 法官裁决: 【{res.verdict}】")
-        print(f"  => 判决理由: {res.judge_reasoning}")
-  
-    print(f"\n{'='*60}")
+                print(f"    Reason: {vote.reason[:60]}...")
+
+        print(f"
+  => Judge Verdict: [{res.verdict}]")
+        print(f"  => Judge Reasoning: {res.judge_reasoning}")
+
+    print(f"
+{'='*60}")
+
 
 if __name__ == "__main__":
-    # 由于必须异步，所以要封装庭审在异步方法中
+    # The court process must be run asynchronously
     asyncio.run(demo())
 ```
 
-更多示例参考可以在项目文件夹下的example下找到：
+More examples can be found under the `example` folder in the project:
 
-- [命令行完整示例](example/example_full.py) - 展示所有功能的命令行脚本，和上面展示的差不多
-- [Web应用示例](example/backend/app.py) - 带Web界面的事实核查应用，展示如何嵌入到web应用中
+- [Full CLI example](example/example_full.py) – Command-line script demonstrating all major features (similar to the example above).  
+- [Web app example](example/backend/app.py) – A fact-checking web application that shows how to integrate Model Court into a web UI.
 
-## 项目配置
+## Project Configuration
 
 ### LLM
 
-项目支持以下LLM Provider：
+The project supports the following LLM providers:
 
-| Provider              | 说明                            | 模型示例                         |
-| --------------------- | ------------------------------- | -------------------------------- |
-| `openai`            | 原生 OpenAI API                 | gpt-4, gpt-3.5-turbo             |
-| `google`            | Google Gemini                   | gemini-pro, gemini-1.5-pro       |
-| `anthropic`         | Anthropic Claude                | claude-3-5-sonnet, claude-3-opus |
-| `openai_compatible` | OpenAI兼容API（**推荐**） | 通过OpenRouter访问所有模型       |
-| `custom`            | 自定义Provider                  | 本地模型或自建服务               |
+| Provider              | Description                          | Example Models                      |
+| --------------------- | ------------------------------------ | ----------------------------------- |
+| `openai`              | Native OpenAI API                    | gpt-4, gpt-3.5-turbo                |
+| `google`              | Google Gemini                        | gemini-pro, gemini-1.5-pro          |
+| `anthropic`           | Anthropic Claude                     | claude-3-5-sonnet, claude-3-opus    |
+| `openai_compatible`   | OpenAI-compatible API (**recommended**) | Access all models via OpenRouter |
+| `custom`              | Custom provider                      | Local models or self-hosted service |
 
-**推荐使用 `openai_compatible` + OpenRouter**：
+**Recommended: `openai_compatible` + OpenRouter**
 
-OpenRouter 提供统一接口访问多个 LLM，只需一个 API Key，即可统一访问100多个模型，其中亦有不少可以免费使用的模型，如deepseek等。
+OpenRouter provides a unified interface to many LLMs. With a single API key, you can access over 100 models, including some that are free (e.g., deepseek).
 
 ```python
-# 设置环境变量
+# Environment variable
 export OPENROUTER_API_KEY="sk-or-v1-..."
 
-# 在代码中使用
+# In code
 model_config = {
     "provider": "openai_compatible",
     "base_url": "https://openrouter.ai/api/v1",
     "api_key": os.getenv("OPENROUTER_API_KEY"),
-    "model_name": "openai/gpt-4",  # 或其他模型
+    "model_name": "openai/gpt-4",  # Or any other supported model
 }
 ```
 
-支持的模型：https://openrouter.ai/models
+Supported models list: https://openrouter.ai/models
 
 ### Reference
 
-项目支持的内置参考资料源和参考方式包括：
+The project supports the following built-in reference sources and modes:
 
-| Reference类型             | 说明             | 适用场景                   |
-| ------------------------- | ---------------- | -------------------------- |
-| `SimpleTextStorage`     | 纯文本文档       | 简单的事实列表、规则说明   |
-| `LocalRAGReference`     | 本地RAG知识库    | 大量文档的语义检索         |
-| `GoogleSearchReference` | Google自定义搜索 | 需要联网验证最新信息       |
-| `None`                  | 盲审模式         | 纯逻辑推理，不依赖外部资料 |
+| Reference Type          | Description        | Typical Use Case                     |
+| ----------------------- | ------------------ | ------------------------------------ |
+| `SimpleTextStorage`     | Plain text docs    | Simple fact lists, rule descriptions |
+| `LocalRAGReference`     | Local RAG KB       | Semantic search over large corpora   |
+| `GoogleSearchReference` | Google Custom Search | Need real-time web verification   |
+| `None`                  | Blind mode         | Pure logical reasoning without external sources |
 
-**1. 简单文本存储**
+**1. Simple text storage**
 
 ```python
 from model_court.references import SimpleTextStorage
 from pathlib import Path
 
-# 从文件读取
+# Read from file
 facts_file = Path("./data/rag_documents/basic_facts.txt")
 with open(facts_file, "r", encoding="utf-8") as f:
     facts_text = f.read()
 
 reference = SimpleTextStorage(text=facts_text)
 
-# 或者直接传入文本（用于简单测试）
-# reference = SimpleTextStorage(text="事实1: 地球是圆的\n事实2: 水的化学式是H2O")
+# Or directly pass a small text block (for quick tests)
+# reference = SimpleTextStorage(text="Fact 1: The Earth is round
+Fact 2: The chemical formula of water is H2O")
 ```
 
-**2. 本地RAG知识库**
+**2. Local RAG knowledge base**
 
 ```python
 from model_court.references import LocalRAGReference
@@ -421,14 +459,14 @@ from model_court.references import LocalRAGReference
 reference = LocalRAGReference(
     collection_name="my_knowledge",
     persist_directory="./vector_db",
-    source_folder="./documents",  # 包含txt/md文件的文件夹
-    embedding_model="MiniLM",  # "MiniLM", "BGE", "OpenAI"
-    mode="append",  # "overwrite", "append", "read_only"
-    top_k=3  # 返回前3个最相关的文档片段
+    source_folder="./documents",  # Folder with txt/md files
+    embedding_model="MiniLM",     # "MiniLM", "BGE", or "OpenAI"
+    mode="append",                # "overwrite", "append", or "read_only"
+    top_k=3                       # Return top 3 most relevant chunks
 )
 ```
 
-**3. Google搜索**
+**3. Google Search**
 
 ```python
 from model_court.references import GoogleSearchReference
@@ -440,219 +478,221 @@ reference = GoogleSearchReference(
 )
 ```
 
-**4. 盲审模式（不使用参考资料）**
+**4. Blind mode (no reference)**
 
 ```python
 jury = Jury(
     name="Logic_Checker",
     model=model_config,
-    reference=None,  # 不提供参考资料
-    jury_prompt="仅根据逻辑和常识判断"
+    reference=None,  # No external references
+    jury_prompt="Judge only based on logic and common sense."
 )
 ```
 
-## 项目结构
+## Project Structure
 
-```
+```text
 model_court/
-├── model_court/           # 核心包
-│   ├── core/             # 核心组件
-│   │   ├── models.py     # 数据模型
-│   │   ├── court.py      # Court 主类
-│   │   ├── prosecutor.py # Prosecutor 类
-│   │   ├── jury.py       # Jury 类
-│   │   └── judge.py      # Judge 类
-│   ├── llm/              # LLM Provider 层
-│   │   ├── base.py       # 抽象基类
+├── model_court/             # Core package
+│   ├── core/                # Core components
+│   │   ├── models.py        # Data models
+│   │   ├── court.py         # Court main class
+│   │   ├── prosecutor.py    # Prosecutor class
+│   │   ├── jury.py          # Jury class
+│   │   └── judge.py         # Judge class
+│   ├── llm/                 # LLM provider layer
+│   │   ├── base.py          # Abstract base classes
 │   │   ├── openai_provider.py
 │   │   ├── google_provider.py
 │   │   ├── anthropic_provider.py
 │   │   ├── custom_provider.py
-│   │   └── factory.py    # Provider 工厂
-│   ├── references/       # 参考资料源
-│   │   ├── base.py       # 抽象基类
+│   │   └── factory.py       # Provider factory
+│   ├── references/          # Reference sources
+│   │   ├── base.py          # Abstract base classes
 │   │   ├── google_search.py
 │   │   ├── web_search.py
 │   │   ├── rag_reference.py
 │   │   └── text_storage.py
-│   ├── embeddings/       # Embedding 模型
-│   │   ├── base.py       # 抽象基类
+│   ├── embeddings/          # Embedding models
+│   │   ├── base.py          # Abstract base classes
 │   │   ├── minilm.py
 │   │   ├── bge.py
 │   │   └── openai_embedding.py
-│   ├── code/             # Court Code 判例库
-│   │   ├── base.py       # 抽象基类
+│   ├── code/                # Court Code (precedent store)
+│   │   ├── base.py          # Abstract base classes
 │   │   └── sqlite_code.py
-│   └── utils/            # 工具函数
+│   └── utils/               # Helper utilities
 │       └── helpers.py
-├── example/              # 使用示例
-│   ├── example_full.py   # 命令行完整示例
-│   ├── backend/          # Web API 服务器
-│   ├── frontend/         # Web 前端界面
-│   └── data/             # 示例数据
-├── api_docs.md           # API 文档
-├── README.md             # 项目说明
-├── CHANGELOG.md          # 更新日志
-├── CONTRIBUTING.md       # 贡献指南
-├── LICENSE               # 许可证
-├── pyproject.toml        # 项目配置
-├── setup.py              # 安装脚本
-└── requirements.txt      # 依赖列表
+├── example/                 # Usage examples
+│   ├── example_full.py      # Full CLI example
+│   ├── backend/             # Web API server
+│   ├── frontend/            # Web frontend
+│   └── data/                # Example data
+├── api_docs.md              # API documentation
+├── README.md                # Project description
+├── CHANGELOG.md             # Changelog
+├── CONTRIBUTING.md          # Contribution guide
+├── LICENSE                  # License
+├── pyproject.toml           # Project configuration
+├── setup.py                 # Setup script
+└── requirements.txt         # Dependencies
 ```
 
 .
 
-## 高级功能
+## Advanced Features
 
-### 自定义判决规则
+### Custom Verdict Rules
 
-根据业务需求自定义判决逻辑：
+You can customize verdict rules according to your business requirements:
 
 ```python
-# 示例1: 严格模式（一票否决）
+# Example 1: Strict mode (single veto)
 court_strict = Court(
     prosecutor=prosecutor,
     juries=[jury_logic, jury_web, jury_rag, jury_facts],
     judge=judge,
     verdict_rules={
-        "supported": {"operator": "eq", "value": 0},    # 必须0个反对票
-        "refuted": "default"  # 任何反对票都判为refuted
+        "supported": {"operator": "eq", "value": 0},   # Must have 0 opposing votes
+        "refuted": "default"  # Any opposing vote → refuted
     }
 )
 
-# 示例2: 宽松模式（少数服从多数）
+# Example 2: Lenient mode (majority rule)
 court_lenient = Court(
     prosecutor=prosecutor,
     juries=[jury_logic, jury_web, jury_rag, jury_facts],
     judge=judge,
     verdict_rules={
-        "supported": {"operator": "lt", "value": 0.25},   # 反对票<25%
-        "suspicious": {"operator": "lt", "value": 0.75},  # 反对票<75%
-        "refuted": "default"  # 反对票>=75%
+        "supported": {"operator": "lt", "value": 0.25},   # Opposition < 25%
+        "suspicious": {"operator": "lt", "value": 0.75},  # Opposition < 75%
+        "refuted": "default"  # Opposition >= 75%
     }
 )
 
-# 示例3: 三档评级
+# Example 3: Multi-level rating
 court_detailed = Court(
     prosecutor=prosecutor,
     juries=[jury_logic, jury_web, jury_rag, jury_facts],
     judge=judge,
     verdict_rules={
-        "clearly_true": {"operator": "eq", "value": 0},     # 0个反对
-        "likely_true": {"operator": "lt", "value": 0.3},    # <30%反对
-        "uncertain": {"operator": "lt", "value": 0.6},      # <60%反对
-        "likely_false": {"operator": "lt", "value": 0.9},   # <90%反对
-        "clearly_false": "default"  # >=90%反对
+        "clearly_true": {"operator": "eq", "value": 0},     # 0 opposition
+        "likely_true": {"operator": "lt", "value": 0.3},    # < 30% opposition
+        "uncertain": {"operator": "lt", "value": 0.6},      # < 60% opposition
+        "likely_false": {"operator": "lt", "value": 0.9},   # < 90% opposition
+        "clearly_false": "default"  # >= 90% opposition
     }
 )
 ```
 
-### 自动Claim拆分
+### Automatic Claim Splitting
 
-对于复杂陈述，可以自动拆分为多个独立的claim：
+For complex statements, you can automatically split them into multiple independent claims:
 
 ```python
 prosecutor = Prosecutor(
     court_code=court_code,
-    auto_claim_splitting=True,  # 启用自动拆分
+    auto_claim_splitting=True,  # Enable auto splitting
     model={
         "provider": "openai_compatible",
         "base_url": "https://openrouter.ai/api/v1",
         "api_key": os.getenv("OPENROUTER_API_KEY"),
         "model_name": "openai/gpt-3.5-turbo",
     },
-    prosecutor_prompt="将案情拆解为独立的、可验证的事实断言。"
+    prosecutor_prompt="Split the case into independent, verifiable factual claims."
 )
 
-# 输入: "地球是平的，而且太阳绕着地球转。"
-# 自动拆分为:
-# Claim 1: "地球是平的"
-# Claim 2: "太阳绕着地球转"
+# Input: "The Earth is flat, and the Sun orbits the Earth."
+# Automatically split into:
+# Claim 1: "The Earth is flat."
+# Claim 2: "The Sun orbits the Earth."
 ```
 
-### 判例缓存系统
+### Precedent Caching System
 
-自动缓存历史判决，避免重复评估：
+Automatically cache past rulings to avoid repeated evaluation:
 
 ```python
+from datetime import timedelta
+
 court_code = SqliteCourtCode(
     db_path="./court_history.db",
-    enable_vector_search=True,  # 向量检索相似判例
-    default_validity_period=timedelta(days=30)  # 判例有效期
+    enable_vector_search=True,              # Vector search for similar cases
+    default_validity_period=timedelta(days=30)  # Precedent validity period
 )
 
-# 首次检查: 完整流程，耗时10-30秒
-report1 = await court.hear("地球是平的")
+# First check: full pipeline, typically 10–30 seconds
+report1 = await court.hear("The Earth is flat.")
 
-# 再次检查相同内容: 直接返回缓存结果，耗时<1秒
-report2 = await court.hear("地球是平的")
+# Second check with same content: directly return cached result, < 1 second
+report2 = await court.hear("The Earth is flat.")
 ```
 
-## 常见问题
+## FAQ
 
-### Q: 包名和导入名称不一致？
+### Q: Why are the package name and import name different?
 
-是的，这是有意设计的：
+This is intentional:
 
-- **安装时**使用 `pip install model-court`（PyPI包名，带连字符）
-- **导入时**使用 `from model_court import ...`（Python模块名，下划线）
+- **Installation**: `pip install model-court` (PyPI package name, with hyphen)  
+- **Import**: `from model_court import ...` (Python module name, with underscore)
 
-这是Python常见做法，因为Python模块名不能包含连字符。
+This is a common pattern in Python because module names cannot contain hyphens.
 
-### Q: ModuleNotFoundError: No module named 'model_court'
+### Q: I get `ModuleNotFoundError: No module named 'model_court'`
 
-请确保正确安装了包：
+Please ensure the package is installed correctly:
 
 ```bash
-# 在项目根目录（包含 pyproject.toml 的目录）
+# From project root (where pyproject.toml is located)
 pip install -e .
 
-# 或从PyPI安装
+# Or install from PyPI
 pip install model-court
 ```
 
-### Q: 如何使用不同的LLM？
+### Q: How do I use different LLMs?
 
-推荐使用 OpenRouter 统一接口：
+Recommended: use OpenRouter as a unified entrypoint:
 
 ```python
 model_config = {
     "provider": "openai_compatible",
     "base_url": "https://openrouter.ai/api/v1",
     "api_key": os.getenv("OPENROUTER_API_KEY"),
-    "model_name": "模型名称",  # 如 openai/gpt-4, anthropic/claude-3-5-sonnet
+    "model_name": "MODEL_NAME",  # e.g., openai/gpt-4, anthropic/claude-3-5-sonnet
 }
 ```
 
-支持的模型列表：https://openrouter.ai/models
+Supported model list: https://openrouter.ai/models
 
-当然你也可以使用ChatGPT, Gemini, Claude等官方API，或者学校提供的自定义API等。
+You can of course also use the official APIs for ChatGPT, Gemini, Claude, or school/corporate APIs that are OpenAI-compatible.
 
-### Q: 如何减少API成本？
+### Q: How can I reduce API costs?
 
-建议：
+Suggestions:
 
-1. 使用便宜的、免费的API
-2. 使用本地小模型（支持本地模型）
-3. 使用判例缓存系统（自动避免重复查询）
-4. 减少陪审员数量
-5. 使用更便宜的模型（如 gpt-3.5-turbo）
-6. 禁用自动claim拆分（`auto_claim_splitting=False`）
+1. Use cheaper or free APIs when possible.  
+2. Use smaller or local models (local inference is supported).  
+3. Use the precedent caching system to avoid repeated evaluation.  
+4. Reduce the number of juries.  
+5. Use cheaper models such as `gpt-3.5-turbo`.  
+6. Disable automatic claim splitting (`auto_claim_splitting=False`).
 
-### Q: 检查速度慢怎么办？
+### Q: What if evaluation is slow?
 
-A: 正常情况下，多个AI模型并发评估需要10-30秒。加速方法：
+Normally, evaluating multiple models in parallel takes about **10–30 seconds**. To speed up:
 
-- 使用判例缓存（相同内容第二次检查<1秒）
-- 减少陪审员数量
-- 选择响应更快的模型
-- 调整 `concurrency_limit` 参数
+- Enable and leverage precedent caching (second run on the same content is < 1 second).  
+- Reduce the number of juries.  
+- Choose faster models.  
+- Tune the `concurrency_limit` parameter.
 
-## 许可证与引用
+## License & Citation
 
-本项目遵循MIT License，可自由分发、商用等。
+This project is licensed under the MIT License and can be used freely, including for commercial purposes.
 
-如果您在研究中使用 Model Court，请引用：
+If you use Model Court in your research, please cite:
 
 ```bibtex
 @software{model-court,

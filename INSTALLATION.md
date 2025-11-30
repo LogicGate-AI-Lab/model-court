@@ -1,168 +1,180 @@
-# Model Court 安装指南
+# Model Court Installation Guide
 
-## 系统要求
+[![EN](https://img.shields.io/badge/lang-EN-blue)](INSTALLATION.md) [![ZH](https://img.shields.io/badge/lang-ZH-red)](INSTALLATION_zh.md)
 
-- **Python**: >= 3.9, < 4.0
-- **操作系统**: Windows / Linux / macOS
-- **推荐**: 使用虚拟环境（venv 或 conda）
+## System Requirements
 
-## 依赖版本说明
+- **Python**: >= 3.9, < 4.0  
+- **Operating System**: Windows / Linux / macOS  
+- **Recommended**: Use a virtual environment (venv or conda)
 
-### 核心依赖
-- `pydantic>=2.9.0,<3.0.0` - 数据验证
-- `python-dateutil>=2.9.0,<3.0.0` - 日期处理
+## Dependency Overview
 
-### 科学计算与机器学习
-- `numpy>=1.26.0,<3.0.0` - 支持 NumPy 1.26+ 和 2.x
-- `torch>=2.1.0,<3.0.0` - PyTorch 深度学习框架
-- `sentence-transformers>=3.0.0,<4.0.0` - 句子嵌入模型
-- `chromadb>=0.5.0,<0.6.0` - 向量数据库（已支持 NumPy 2.x）
+### Core Dependencies
+- `pydantic>=2.9.0,<3.0.0` – Data validation
+- `python-dateutil>=2.9.0,<3.0.0` – Date and time utilities
 
-### LLM 提供商
-- `openai>=1.54.0,<2.0.0` - OpenAI API SDK
-- `google-generativeai>=0.8.0,<1.0.0` - Google Gemini API SDK
-- `anthropic>=0.39.0,<1.0.0` - Anthropic Claude API SDK
+### Scientific Computing & Machine Learning
+- `numpy>=1.26.0,<3.0.0` – Supports NumPy 1.26+ and 2.x
+- `torch>=2.1.0,<3.0.0` – PyTorch deep learning framework
+- `sentence-transformers>=3.0.0,<4.0.0` – Sentence embedding models
+- `chromadb>=0.5.0,<0.6.0` – Vector database (supports NumPy 2.x)
 
-### 网络与搜索
-- `aiohttp>=3.10.0,<4.0.0` - 异步HTTP客户端
-- `httpx>=0.27.0,<1.0.0` - 现代HTTP客户端
-- `duckduckgo-search>=6.0.0,<7.0.0` - DuckDuckGo 搜索 API
+### LLM Providers
+- `openai>=1.54.0,<2.0.0` – OpenAI API SDK
+- `google-generativeai>=0.8.0,<1.0.0` – Google Gemini API SDK
+- `anthropic>=0.39.0,<1.0.0` – Anthropic Claude API SDK
 
-## 安装步骤
+### Networking & Search
+- `aiohttp>=3.10.0,<4.0.0` – Asynchronous HTTP client
+- `httpx>=0.27.0,<1.0.0` – Modern HTTP client
+- `duckduckgo-search>=6.0.0,<7.0.0` – DuckDuckGo Search API
 
-### 1. 创建虚拟环境（推荐）
+---
+
+## Installation Steps
+
+### 1. Create a Virtual Environment (Recommended)
 
 ```bash
-# 使用 venv
+# Using venv
 python -m venv .venv
 
-# Windows 激活
+# Activate on Windows
 .venv\Scripts\activate
 
-# Linux/macOS 激活
+# Activate on Linux/macOS
 source .venv/bin/activate
 ```
 
-### 2. 安装 Model Court 包
+---
 
-#### 方法 A：开发模式安装（推荐用于开发）
+### 2. Install Model Court
+
+#### Method A: Development Mode Install (Recommended for contributors)
 
 ```bash
-# 从项目根目录
+# From project root
 pip install -e .[full]
 ```
 
-这将安装所有可选依赖。
+This installs all optional dependencies.
 
-#### 方法 B：按需安装
+#### Method B: Install Only What You Need
 
 ```bash
-# 只安装核心依赖
+# Core only
 pip install -e .
 
-# 添加 LLM 支持
+# Add LLM support
 pip install -e .[llm]
 
-# 添加 RAG 支持
+# Add RAG support
 pip install -e .[rag]
 
-# 添加搜索支持
+# Add search support
 pip install -e .[search]
 
-# 完整安装
+# Full installation
 pip install -e .[full]
 ```
 
-#### 方法 C：直接安装依赖（不安装包）
+#### Method C: Install dependencies only (without installing package)
 
 ```bash
-# 从项目根目录
 pip install -r requirements.txt
 ```
 
-### 3. 运行示例
+---
 
-#### 命令行示例
+## 3. Run Examples
+
+### Command Line Example
 
 ```bash
 cd example
 python example_full.py
 ```
 
-#### Web 应用示例
+### Web Application Example
 
 ```bash
 cd example
-# 安装 Web 应用依赖
+
+# Install Web dependencies
 pip install -r requirements.txt
 
-# 配置环境变量
+# Configure environment variables
 cp env.example .env
-# 编辑 .env 文件，填入你的 API 密钥
+# Edit .env with your API keys
 
-# 运行 Web 应用
+# Run web app
 python backend/app.py
 ```
 
-## 常见问题
+---
 
-### NumPy 版本问题
+## Common Issues
 
-如果遇到 NumPy 相关错误，请确保安装的是 NumPy 2.x 或 1.26+：
+### NumPy Version Errors
+
+If you encounter NumPy-related errors, reinstall NumPy 2.x or 1.26+:
 
 ```bash
 pip uninstall numpy -y
 pip install "numpy>=2.0.0,<3.0.0"
 ```
 
-### ChromaDB 兼容性
+### ChromaDB Compatibility
 
-本项目已更新为支持 ChromaDB 0.5.x，这是最新的稳定版本，完全支持 NumPy 2.x。
+This project supports ChromaDB 0.5.x, fully compatible with NumPy 2.x.
 
-如果之前安装过旧版本，请清理后重新安装：
+If you previously installed older versions:
 
 ```bash
 pip uninstall chromadb -y
 pip install "chromadb>=0.5.0,<0.6.0"
 ```
 
-### 虚拟环境清理
+### Virtual Environment Cleanup
 
-如果遇到依赖冲突，建议删除虚拟环境并重新创建：
+If dependencies conflict, recreate the venv:
 
 ```bash
-# 删除旧的虚拟环境
-rm -rf .venv  # Linux/macOS
-rmdir /s .venv  # Windows
+# Remove old environment
+rm -rf .venv      # Linux/macOS
+rmdir /s .venv    # Windows
 
-# 重新创建
+# Recreate
 python -m venv .venv
-.venv\Scripts\activate  # Windows
-source .venv/bin/activate  # Linux/macOS
+.venv\Scripts\activate     # Windows
+source .venv/bin/activate     # Linux/macOS
 
-# 重新安装
 pip install -e .[full]
 ```
 
-## 验证安装
+---
 
-运行以下 Python 代码验证安装：
+## Verify Installation
+
+Run the following Python code:
 
 ```python
 import model_court
 print(f"Model Court version: {model_court.__version__}")
 
-# 验证核心组件
 from model_court import Court, Prosecutor, Jury, Judge
 from model_court.code import SqliteCourtCode
 from model_court.references import LocalRAGReference, SimpleTextStorage
 
-print("✅ 所有核心组件导入成功！")
+print("✅ All core components imported successfully!")
 ```
 
-## 技术支持
+---
 
-如有问题，请访问：
+## Support
+
+For help or reporting issues:
+
 - GitHub Issues: https://github.com/LogicGate-AI-Lab/model-court/issues
-- 文档: https://github.com/LogicGate-AI-Lab/model-court#readme
-
+- Documentation: https://github.com/LogicGate-AI-Lab/model-court#readme

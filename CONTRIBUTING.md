@@ -1,141 +1,116 @@
-# 贡献指南
+# Contribution Guide \| 贡献指南
 
-感谢您对 Model Court 项目感兴趣！我们欢迎各种形式的贡献。
+[English](#english) \| [中文](#中文)
 
-## 贡献方式
+---
 
-### 报告问题
+## English
 
-如果您发现 bug 或有功能建议：
+Thank you for your interest in **Model Court**!
+This is a small project, and we welcome all kinds of contributions.
 
-1. 在 GitHub Issues 中搜索，确认问题尚未被报告
-2. 创建新 Issue，清楚描述问题或建议
-3. 提供复现步骤（如果是 bug）
+### How to Contribute
 
-### 提交代码
+#### 1. Report Issues
 
-1. Fork 本仓库
-2. 创建特性分支：`git checkout -b feature/your-feature`
-3. 提交更改：`git commit -m "描述你的更改"`
-4. 推送到分支：`git push origin feature/your-feature`
-5. 创建 Pull Request
+- If you find a bug or have a suggestion, please open a GitHub Issue.
+- Describe clearly what happened and how to reproduce it (if
+  applicable).
 
-## 开发环境设置
+#### 2. Submit Code
 
-### 安装依赖
+1. Fork the repo\
+2. Create a new branch:`git checkout -b feature/your-feature`
+3. Commit your changes:`git commit -m "Describe your change"`
+4. Push the branch:`git push origin feature/your-feature`
+5. Open a Pull Request
+
+#### 3. Development Setup
 
 ```bash
-# 克隆仓库
 git clone <your-fork>
 cd model-court
-
-# 安装开发依赖
 pip install -e .[dev,full]
 ```
 
-### 运行测试
+Run tests:
 
 ```bash
-# 运行所有测试
 pytest
-
-# 运行特定测试
-pytest tests/test_court.py
-
-# 生成覆盖率报告
-pytest --cov=model_court --cov-report=html
 ```
 
-### 代码格式化
+Format code:
 
 ```bash
-# 格式化代码
 black model_court/
-
-# 排序 imports
 isort model_court/
-
-# 检查代码规范
-flake8 model_court/
-
-# 类型检查
-mypy model_court/
 ```
 
-## 代码规范
+#### 4. Code Style
 
-### Python 风格
+- Follow basic PEP 8 rules\
+- Use type hints when possible\
+- Keep code simple and readable
 
-- 遵循 PEP 8
-- 使用类型提示
-- 函数和类添加 docstrings
-- 保持代码简洁清晰
+#### 5. Pull Request Checklist
 
-### 提交信息
+- [ ] Tests pass\
+- [ ] Code is formatted\
+- [ ] Description is clear\
+- [ ] No unnecessary file changes
 
-- 使用清晰的提交信息
-- 第一行简短描述（50 字以内）
-- 必要时添加详细说明
+---
 
-示例：
+## 中文
+
+感谢你对 **Model Court** 的关注！
+这是一个小项目，我们欢迎各种形式的贡献。
+
+### 如何贡献
+
+#### 1. 报告问题
+
+- 如果你发现 bug 或有建议，请创建 GitHub Issue。
+- 清楚描述问题和复现步骤（如适用）。
+
+#### 2. 提交代码
+
+1. Fork 仓库\
+2. 创建新分支：`git checkout -b feature/your-feature`
+3. 提交修改：`git commit -m "描述你的修改"`
+4. 推送分支：`git push origin feature/your-feature`
+5. 创建 Pull Request
+
+#### 3. 开发环境
+
+```bash
+git clone <your-fork>
+cd model-court
+pip install -e .[dev,full]
 ```
-添加 Claude 3.5 支持
 
-- 实现 AnthropicProvider
-- 添加配置示例
-- 更新文档
+运行测试：
+
+```bash
+pytest
 ```
 
-### 文档
+格式化代码：
 
-- 新功能需要更新 API 文档
-- 添加代码示例
-- 保持文档与代码同步
+```bash
+black model_court/
+isort model_court/
+```
 
-## 贡献建议
+#### 4. 代码规范
 
-### 新手友好的任务
+- 基本遵循 PEP 8\
+- 尽量使用类型标注\
+- 保持代码简单易读
 
-- 修复文档中的错误
-- 添加代码注释
-- 改进错误信息
-- 添加测试用例
+#### 5. Pull Request 检查
 
-### 进阶任务
-
-- 添加新的 LLM Provider
-- 实现新的 Reference 源
-- 性能优化
-- 添加新功能
-
-## Pull Request 检查清单
-
-提交 PR 前，请确认：
-
-- [ ] 代码通过所有测试
-- [ ] 添加了必要的测试
-- [ ] 代码符合规范（black, isort, flake8）
-- [ ] 更新了相关文档
-- [ ] 提交信息清晰明确
-- [ ] 没有不必要的文件变更
-
-## 代码审查流程
-
-1. 提交 Pull Request
-2. CI 自动运行测试
-3. 维护者审查代码
-4. 根据反馈修改
-5. 合并到主分支
-
-## 许可证
-
-通过贡献，您同意您的代码将在 MIT License 下发布。
-
-## 联系方式
-
-如有问题，请：
-- 创建 GitHub Issue
-- 在 Pull Request 中讨论
-
-感谢您的贡献！
-
+- [ ] 测试通过\
+- [ ] 代码已格式化\
+- [ ] 描述清晰\
+- [ ] 没有不必要的变更
